@@ -15,7 +15,7 @@ class EndRunloopSignal(Exception):
 
 
 @loggify
-class IRCClient:
+class ZenIRC:
     def __init__(self, config="config.toml", *args, **kwargs):
         self.config_file = config
         self.load_config()
@@ -35,9 +35,6 @@ class IRCClient:
         with open(self.config_file, 'rb') as f:
             self.config = load(f)
         self.logger.debug('Loaded config: %s' % self.config)
-
-        if 'channels' not in self.config:
-            raise ValueError('No channels specified in config file')
 
     def _import_callables(self, module):
         """ Imports all callables from a module unless they start with an underscore."""
@@ -110,9 +107,6 @@ class IRCClient:
         self.stop_cmd = pre_stop_cmd
 
         self.logger.info("[%s] Supported features: %s" % (self.config['server'], self.server_info['supported_features']))
-
-        for channel in self.config['channels']:
-            self.join(channel)
 
         self.initialized.set()
 

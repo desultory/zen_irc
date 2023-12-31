@@ -1,3 +1,3 @@
-from .ircclient import IRCClient as ZenIRC
+from .zenirc import ZenIRC
 
 __all__ = ['ZenIRC']

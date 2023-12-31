@@ -22,12 +22,7 @@ dependencies = [
 "irctokens >= 2.0.2"
 ]
 
-[options]
-include_package_data = true
-
-[project.scripts]
-zen_irc_client = "zen_irc.main:main"
 
 [project.urls]
-Homepage = "https://github.com/desultory/zenbot"
-Issues = "https://github.com/desultory/zenbot/issues"
+Homepage = "https://github.com/desultory/zen_irc"
+Issues = "https://github.com/desultory/zen_irc/issues"
