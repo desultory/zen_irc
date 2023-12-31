@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zenbot"
+version = "0.1.0"
+authors = [
+  { name="Desultory", email="dev@pyl.onl" },
+]
+description = "Zenbot, a simple IRC bot."
+readme = "readme.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+"zenlib >= 1.3.1",
+"irctokens >= 2.0.2"
+]
+
+[options]
+include_package_data = true
+
+[project.scripts]
+zenbot = "zenbot.main:main"
+
+[project.urls]
+Homepage = "https://github.com/desultory/zenbot"
+Issues = "https://github.com/desultory/zenbot/issues"

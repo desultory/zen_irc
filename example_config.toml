@@ -1,0 +1,7 @@
+
+server = "my.irc.server"
+port = 6697
+
+user = "my_bot"
+
+channels = [ "#my_channel" ]
