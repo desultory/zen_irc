@@ -31,6 +31,11 @@ def handle_MODE(self, msg):
     self.mode = msg.params[1]
 
 
+def handle_PRIVMSG(self, msg):
+    """ Handle PRIVMSG messages. """
+    self.logger.info("[%s] %s" % (msg.source, msg.params[1]))
+
+
 def handle_QUIT(self, msg):
     """ Handle QUIT messages. """
     self.logger.info("[%s] Quit: %s." % (msg.source, msg.params[0]))

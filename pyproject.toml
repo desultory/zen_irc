@@ -3,12 +3,12 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "zenbot"
+name = "zen_irc"
 version = "0.1.0"
 authors = [
   { name="Desultory", email="dev@pyl.onl" },
 ]
-description = "Zenbot, a simple IRC bot."
+description = "A simple IRC client library."
 readme = "readme.md"
 requires-python = ">=3.11"
 classifiers = [
@@ -26,7 +26,7 @@ dependencies = [
 include_package_data = true
 
 [project.scripts]
-zenbot = "zenbot.main:main"
+zen_irc_client = "zen_irc.main:main"
 
 [project.urls]
 Homepage = "https://github.com/desultory/zenbot"

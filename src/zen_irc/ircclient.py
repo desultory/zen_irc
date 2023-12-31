@@ -15,7 +15,7 @@ class EndRunloopSignal(Exception):
 
 
 @loggify
-class ZenBot:
+class IRCClient:
     def __init__(self, config="config.toml", *args, **kwargs):
         self.config_file = config
         self.load_config()
@@ -46,7 +46,7 @@ class ZenBot:
 
     def load_handlers(self):
         """ Loads the handlers module. """
-        for handler in self._import_callables('zenbot.handlers'):
+        for handler in self._import_callables('zen_irc.handlers'):
             if getattr(self, handler.__name__, None):
                 raise ValueError('Handler already exists: %s' % handler.__name__)
             if not handler.__name__.startswith('handle_'):
@@ -57,7 +57,7 @@ class ZenBot:
 
     def load_commands(self):
         """ Loads defined IRC commands from the commands module. """
-        for command in self._import_callables('zenbot.commands'):
+        for command in self._import_callables('zen_irc.commands'):
             if getattr(self, command.__name__, None):
                 raise ValueError('Command already exists: %s' % command.__name__)
             func = partial(command, self)

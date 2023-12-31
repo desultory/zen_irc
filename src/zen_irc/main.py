@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 
-from zenbot import ZenBot
+from zen_irc import ZenIRC
 from argparse import ArgumentParser
 from logging import getLogger, StreamHandler
 from zenlib.logging import ColorLognameFormatter
@@ -16,7 +16,7 @@ def main():
 
     args = parser.parse_args()
 
-    logger = getLogger('ZenBot')
+    logger = getLogger('ZenIRCClient')
     handler = StreamHandler()
     handler.setFormatter(ColorLognameFormatter())
     logger.addHandler(handler)
@@ -33,7 +33,7 @@ def main():
     if args.config:
         kwargs['config'] = args.config
 
-    bot = ZenBot(**kwargs)
+    bot = ZenIRC(**kwargs)
     bot.run()
 
 
