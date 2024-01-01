@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zen_irc"
-version = "0.1.0"
+version = "0.2.0"
 authors = [
   { name="Desultory", email="dev@pyl.onl" },
 ]
@@ -21,6 +21,8 @@ dependencies = ["zenlib >= 1.4.0",
 "irctokens >= 2.0.2"
 ]
 
+[project.scripts]
+zen_irc_client = "zen_irc.client:main"
 
 [project.urls]
 Homepage = "https://github.com/desultory/zen_irc"

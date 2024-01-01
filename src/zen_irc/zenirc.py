@@ -50,7 +50,7 @@ class ZenIRC:
         """ Loads the handlers module. """
         for handler in self._import_callables('zen_irc.handlers'):
             if getattr(self, handler.__name__, None):
-                raise ValueError('Handler already exists: %s' % handler.__name__)
+                self.logger.info("Handler already exists: %s" % handler.__name__)
             if not handler.__name__.startswith('handle_'):
                 raise ValueError('Handler does not start with "handle_": %s' % handler.__name__)
             func = partial(handler, self)
