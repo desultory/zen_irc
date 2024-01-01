@@ -51,6 +51,7 @@ class ZenIRC:
         for handler in self._import_callables('zen_irc.handlers'):
             if getattr(self, handler.__name__, None):
                 self.logger.info("Handler already exists: %s" % handler.__name__)
+                return
             if not handler.__name__.startswith('handle_'):
                 raise ValueError('Handler does not start with "handle_": %s' % handler.__name__)
             func = partial(handler, self)
