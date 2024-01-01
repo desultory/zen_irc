@@ -1,4 +1,4 @@
-from zenlib.logging import loggify
+from zen_logging import loggify
 
 from tomllib import load
 from socket import socket, AF_INET, SOCK_STREAM
@@ -34,6 +34,11 @@ class ZenIRC:
         self.logger.info('Loading config file: %s' % self.config_file)
         with open(self.config_file, 'rb') as f:
             self.config = load(f)
+
+        if 'handlers' in self.config:
+            self.logger.info("[%s] Adding handlers from config file: %s" % (self.config_file, self.config['handlers']))
+            self.handlers.extend(self.config['handlers'])
+
         self.logger.debug('Loaded config: %s' % self.config)
 
     def _import_callables(self, module):
@@ -61,12 +66,13 @@ class ZenIRC:
             setattr(self, command.__name__, func)
             self.logger.debug('Loaded command: %s' % command.__name__)
 
-    def send(self, msg):
+    def send(self, msg, quiet=False):
         """ Sends a message to the IRC server. """
         self.logger.debug('Encoding message: %s' % msg)
         self.encoder.push(msg)
         while pending_msg := self.encoder.pending():
-            self.logger.info('Sending message: %s' % pending_msg.decode().strip())
+            log_level = 20 if quiet else 10
+            self.logger.log(log_level, 'Sending message: %s' % pending_msg.decode().strip())
             self.encoder.pop(self.irc_socket.send(pending_msg))
 
     def connect(self):
@@ -99,14 +105,18 @@ class ZenIRC:
         self.channels = {}
         self.motd_start = Event()
 
-        self.logger.info('Connected to %s:%s' % (self.config['server'], self.config['port']))
-
+        # Add a hook to handle 376 (end of MOTD) and then remove it
+        # This is so we can wait for the end of the MOTD before joining channels
         pre_stop_cmd = self.stop_cmd.copy()
-        self.stop_cmd = ['376', 'MODE']
+        self.stop_cmd = ['376']
         self.runloop()
         self.stop_cmd = pre_stop_cmd
 
         self.logger.info("[%s] Supported features: %s" % (self.config['server'], self.server_info['supported_features']))
+
+        for channel in self.config.get('channels'):
+            self.join(channel)
+            self.logger.info("[%s] Joined channel: %s" % (self.config['server'], channel))
 
         self.initialized.set()
 

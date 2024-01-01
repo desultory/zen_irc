@@ -40,7 +40,7 @@ def msg(self, target, message):
 def pong(self, server):
     """Respond to a ping."""
     data = _build("PONG", [server])
-    self.send(data)
+    self.send(data, quiet=True)
 
 
 def quit(self, message=None):

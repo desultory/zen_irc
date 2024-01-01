@@ -21,12 +21,6 @@ def handle_NOTICE(self, msg):
 
 def handle_MODE(self, msg):
     """ Handle MODE messages. """
-    if msg.source != self.user:
-        raise ValueError("Received MODE message from non-self source: %s" % msg.source)
-
-    if msg.params[0] != self.user:
-        raise ValueError("Received MODE message for non-self target: %s" % msg.params[0])
-
     self.logger.info("[%s] Your mode is: %s" % (msg.source, msg.params[1]))
     self.mode = msg.params[1]
 
@@ -34,6 +28,13 @@ def handle_MODE(self, msg):
 def handle_PRIVMSG(self, msg):
     """ Handle PRIVMSG messages. """
     self.logger.info("[%s] %s" % (msg.source, msg.params[1]))
+
+
+def handle_PART(self, msg):
+    """ Handle PART messages. """
+    self.logger.info("[%s] User parted channel: %s (%s)" % (msg.source, msg.params[0], msg.params[1]))
+    self.logger.error(self.channels)
+    self.channels[msg.params[0]]['users'].remove(msg.source)
 
 
 def handle_QUIT(self, msg):
