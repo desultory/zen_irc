@@ -8,23 +8,18 @@ from irctokens import build as _build
 class IRCCommands:
     def user(self, username, mode=0, unused='*', realname=None):
         """Create a new user."""
-        if not realname:
-            realname = username
-        data = _build("USER", [username, str(mode), unused, realname])
-        self.send(data)
+        realname = realname or username
+        self.send(_build("USER", [username, str(mode), unused, realname]))
         self.username = username
 
     def nick(self, nickname):
         """Set the nick."""
-        data = _build("NICK", [nickname])
-        self.send(data)
+        self.send(_build("NICK", [nickname]))
         self.nickname = nickname
 
     def join(self, channel, key=None):
         """Join a channel."""
-        args = [channel]
-        if key:
-            args.append(key)
+        args = [channel, key] if key else [channel]
         self.send(_build("JOIN", args))
         if channel in self._channels:
             self.channels[channel] = self._channels.pop(channel)
@@ -43,23 +38,17 @@ class IRCCommands:
 
     def part(self, channel, message=None):
         """Part a channel."""
-        args = [channel]
-        if message:
-            args.append(message)
+        args = [channel, message] if message else [channel]
         self.send(_build("PART", args))
         self._channels[channel] = self.channels.pop(channel)
 
     def pong(self, server):
         """Respond to a ping."""
-        data = _build("PONG", [server])
-        self.send(data, quiet=True)
+        self.send(_build("PONG", [server]), quiet=True)
 
     def quit(self, message=None):
         """Quit the server."""
-        if message:
-            data = _build("QUIT", [message])
-        else:
-            data = _build("QUIT")
+        data = _build("QUIT", [message]) if message else _build("QUIT")
         self.send(data)
         self.running.clear()
 
