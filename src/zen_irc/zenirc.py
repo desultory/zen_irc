@@ -23,6 +23,7 @@ class ZenIRC(ClassLogger, BaseIRCHandlers, ExtendedIRCHandlers, IRCCommands):
         self.decoder = StatefulDecoder()
         self.loop_thread = ZenThread(target=self.mainloop, looping=True, logger=self.logger)
         self.channels = {}
+        self._channels = {}  # For removed channels
         self.message_queue = Queue()
 
         self.stop_cmd = ['QUIT']

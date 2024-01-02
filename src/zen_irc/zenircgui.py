@@ -49,13 +49,13 @@ class ZenIRCGUI(QMainWindow):
     def update_display(self):
         if not self.client.active_channel:
             return
-        messages = self.client.channels[self.client.active_channel]['messages']
+        channel = self.client.channels.get(self.client.active_channel) or self.client._channels[self.client.active_channel]
         label_text = ''
-        for message in messages:
+        for message in channel['messages']:
             if isinstance(message, str):
                 label_text += f"{self.client.nickname}: {message}\n"
                 continue
-            label_text += f"{message.hostmask.nickname} {message.params[1]}\n"
+            label_text += f"{message.hostmask.nickname}: {message.params[1]}\n"
         self.display_label.setText(label_text)
         self.channel_selector.setCurrentText(self.client.active_channel)
 

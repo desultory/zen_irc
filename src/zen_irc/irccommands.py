@@ -25,9 +25,11 @@ class IRCCommands:
         args = [channel]
         if key:
             args.append(key)
-        data = _build("JOIN", args)
-        self.send(data)
-        self.channels[channel] = {'messages': [], 'users': []}
+        self.send(_build("JOIN", args))
+        if channel in self._channels:
+            self.channels[channel] = self._channels.pop(channel)
+        else:
+            self.channels[channel] = {'messages': [], 'users': []}
 
     def msg(self, target, message):
         """Send a message to a target."""
@@ -38,6 +40,14 @@ class IRCCommands:
 
         self.channels[target]['messages'].append(message)
         self.send(data)
+
+    def part(self, channel, message=None):
+        """Part a channel."""
+        args = [channel]
+        if message:
+            args.append(message)
+        self.send(_build("PART", args))
+        self._channels[channel] = self.channels.pop(channel)
 
     def pong(self, server):
         """Respond to a ping."""

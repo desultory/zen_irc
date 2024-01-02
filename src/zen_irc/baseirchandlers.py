@@ -34,9 +34,12 @@ class BaseIRCHandlers:
 
     def handle_PART(self, msg):
         """ Handle PART messages. """
-        self.logger.info("[%s] User parted channel: %s (%s)" % (msg.source, msg.params[0], msg.params[1]))
-        self.logger.error(self.channels)
-        self.channels[msg.params[0]]['users'].remove(msg.source)
+        if len(msg.params) > 1:
+            self.logger.info("[%s] User parted channel: %s (%s)" % (msg.source, msg.params[0], msg.params[1]))
+        else:
+            self.logger.info("[%s] User parted channel: %s" % (msg.source, msg.params[0]))
+        if msg.hostmask.nickname != self.nickname:
+            self.channels[msg.params[0]]['users'].remove(msg.source)
 
     def handle_QUIT(self, msg):
         """ Handle QUIT messages. """

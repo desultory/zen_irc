@@ -26,3 +26,13 @@ class ZenIRCClient(ZenIRC):
         self.active_channel = channel
         if self.update_signal:
             self.update_signal.emit()
+
+    def part(self, channel=None, message=None):
+        """ Override the part method to set the active_channel. """
+        channel = channel or self.active_channel
+        super().part(channel, message)
+
+    def join(self, channel=None, key=None):
+        """ Override the join method to set the active_channel. """
+        channel = channel or self.active_channel
+        super().join(channel, key)
