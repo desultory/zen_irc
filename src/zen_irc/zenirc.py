@@ -1,4 +1,5 @@
-from zen_logging import loggify
+from zenlib.logging import loggify
+from zenlib.threading import add_thread, loop_thread
 
 from tomllib import load
 from socket import socket, AF_INET, SOCK_STREAM
@@ -9,11 +10,7 @@ from functools import partial
 from threading import Event
 
 
-class EndRunloopSignal(Exception):
-    """ Raised when processing should end. """
-    pass
-
-
+@add_thread('mainloop', 'mainloop', 'ZenIRC mainloop')
 @loggify
 class ZenIRC:
     def __init__(self, config="config.toml", *args, **kwargs):
@@ -51,7 +48,7 @@ class ZenIRC:
         for handler in self._import_callables('zen_irc.handlers'):
             if getattr(self, handler.__name__, None):
                 self.logger.info("Handler already exists: %s" % handler.__name__)
-                return
+                continue
             if not handler.__name__.startswith('handle_'):
                 raise ValueError('Handler does not start with "handle_": %s' % handler.__name__)
             func = partial(handler, self)
@@ -95,7 +92,8 @@ class ZenIRC:
             self.logger.warning('[%s] Unhandled line: %s' % (line.command, line))
 
         if line.command in self.stop_cmd:
-            raise EndRunloopSignal('Received stop command: %s' % line.command)
+            self.logger.warning('Received stop command: %s' % line.command)
+            self._running_mainloop.clear()
 
     def connection_init(self):
         """ Initializes the connection to the IRC server. """
@@ -110,7 +108,8 @@ class ZenIRC:
         # This is so we can wait for the end of the MOTD before joining channels
         pre_stop_cmd = self.stop_cmd.copy()
         self.stop_cmd = ['376']
-        self.runloop()
+        # Run the mainloop manually, since we're not actually running the client yet
+        self.start_mainloop_thread().join()
         self.stop_cmd = pre_stop_cmd
 
         self.logger.info("[%s] Supported features: %s" % (self.config['server'], self.server_info['supported_features']))
@@ -126,33 +125,27 @@ class ZenIRC:
         if not self.initialized.is_set():
             self.connection_init()
         try:
-            self.runloop()
+            self.start_mainloop_thread()
         except KeyboardInterrupt:
             self.logger.warning("Received keyboard interrupt, sending QUIT")
             self.quit(message="Keyboard interrupt")
             self.run()
 
-    def runloop(self):
-        """ Main runloop for the bot. """
-        self.logger.debug('Starting runloop')
-        self.running.set()
-        while data := self.irc_socket.recv(1024):
-            stop_signal = False
-            if not self.running.is_set():
-                stop_signal = True
-            self.logger.log(5, 'Received data: %s' % data)
-            lines = self.decoder.push(data)
-            if lines is None:
-                self.logger.warning("No lines returned from decoder, connection may have been closed.")
-                break
+    @loop_thread
+    def mainloop(self):
+        """ Main loop for the client. """
+        data = self.irc_socket.recv(1024)
+        self.logger.log(5, 'Received data: %s' % data)
+        lines = self.decoder.push(data)
+        if lines is None:
+            self.logger.warning("No lines returned from decoder, connection may have been closed.")
+            self._running_mainloop.clear()
 
-            for line in lines:
-                try:
-                    self.process_line(line)
-                except EndRunloopSignal as e:
-                    self.logger.warning("Stopping runloop: %s" % e)
-                    stop_signal = True
+        for line in lines:
+            self.process_line(line)
 
-            if stop_signal:
-                break
+        self.loop_actions()
+
+    def loop_actions(self):
+        pass
 
