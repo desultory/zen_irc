@@ -7,7 +7,6 @@ class ZenIRCClient(ZenIRC):
         super().__init__(*args, **kwargs)
         self.message_queue = Queue()
         self.run()
-        self.logger.warning("FUCK")
 
     def handle_PRIVMSG(self, msg):
         """ Handle PRIVMSG messages."""
