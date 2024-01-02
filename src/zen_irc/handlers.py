@@ -11,7 +11,6 @@ def handle_PING(self, msg):
 def handle_JOIN(self, msg):
     """ Handle JOIN messages. """
     self.logger.info("[%s] Joined channel: %s." % (msg.source, msg.params[0]))
-    self.channels[msg.params[0]] = {}
 
 
 def handle_NOTICE(self, msg):
@@ -28,6 +27,7 @@ def handle_MODE(self, msg):
 def handle_PRIVMSG(self, msg):
     """ Handle PRIVMSG messages. """
     self.logger.info("[%s] %s" % (msg.source, msg.params[1]))
+    self.message_queue.put(msg)
 
 
 def handle_PART(self, msg):

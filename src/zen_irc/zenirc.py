@@ -1,17 +1,17 @@
 from zenlib.logging import loggify
-from zenlib.threading import add_thread, loop_thread
+from zenlib.threading import ZenThread
 
 from tomllib import load
-from socket import socket, AF_INET, SOCK_STREAM
+from socket import socket, AF_INET, SOCK_STREAM, timeout
 from ssl import wrap_socket
 from irctokens import StatefulDecoder, StatefulEncoder
 from importlib import import_module
 from functools import partial
 from threading import Event
+from queue import Queue
 
 
 @loggify
-@add_thread('mainloop', 'mainloop', 'ZenIRC mainloop')
 class ZenIRC:
     def __init__(self, config="config.toml", *args, **kwargs):
         self.config_file = config
@@ -21,6 +21,9 @@ class ZenIRC:
 
         self.encoder = StatefulEncoder()
         self.decoder = StatefulDecoder()
+        self.loop_thread = ZenThread(target=self.mainloop, looping=True, logger=self.logger)
+        self.channels = {}
+        self.message_queue = Queue()
 
         self.stop_cmd = ['QUIT']
         self.running = Event()
@@ -79,6 +82,7 @@ class ZenIRC:
         self.logger.debug('Created socket: %s' % self._socket)
         self.irc_socket = wrap_socket(self._socket)
         self.logger.debug('Wrapped socket: %s' % self.irc_socket)
+        self.irc_socket.settimeout(1)
 
         self.irc_socket.connect((self.config['server'], self.config['port']))
         self.logger.info('Connected to %s:%s' % (self.config['server'], self.config['port']))
@@ -93,7 +97,7 @@ class ZenIRC:
 
         if line.command in self.stop_cmd:
             self.logger.warning('Received stop command: %s' % line.command)
-            self._running_mainloop.clear()
+            self.stop()
 
     def connection_init(self):
         """ Initializes the connection to the IRC server. """
@@ -101,7 +105,6 @@ class ZenIRC:
         self.user(self.config['user'])
         self.nick(self.config['user'])
         self.server_info = {'supported_features': []}
-        self.channels = {}
         self.motd_start = Event()
 
         # Add a hook to handle 376 (end of MOTD) and then remove it
@@ -109,7 +112,8 @@ class ZenIRC:
         pre_stop_cmd = self.stop_cmd.copy()
         self.stop_cmd = ['376']
         # Run the mainloop manually, since we're not actually running the client yet
-        self.start_mainloop_thread().join()
+        self.loop_thread.start()
+        self.loop_thread.join()
         self.stop_cmd = pre_stop_cmd
 
         self.logger.info("[%s] Supported features: %s" % (self.config['server'], self.server_info['supported_features']))
@@ -125,21 +129,26 @@ class ZenIRC:
         if not self.initialized.is_set():
             self.connection_init()
         try:
-            self.start_mainloop_thread()
+            self.loop_thread.start()
         except KeyboardInterrupt:
             self.logger.warning("Received keyboard interrupt, sending QUIT")
             self.quit(message="Keyboard interrupt")
             self.run()
 
-    @loop_thread
+    def stop(self):
+        self.loop_thread.loop.clear()
+
     def mainloop(self):
         """ Main loop for the client. """
-        data = self.irc_socket.recv(1024)
+        try:
+            data = self.irc_socket.recv(1024)
+        except timeout:
+            return
         self.logger.log(5, 'Received data: %s' % data)
         lines = self.decoder.push(data)
         if lines is None:
             self.logger.warning("No lines returned from decoder, connection may have been closed.")
-            self._running_mainloop.clear()
+            self.stop()
 
         for line in lines:
             self.process_line(line)
@@ -147,5 +156,16 @@ class ZenIRC:
         self.loop_actions()
 
     def loop_actions(self):
-        pass
+        self.process_messages()
+
+    def process_message(self, msg):
+        """ Processes a message from the message queue. """
+        self.logger.debug('Processing message: %s' % msg)
+        print(f"[{msg.params[0]}] <{msg.source}> {msg.params[1]}")
+
+    def process_messages(self):
+        """ Processes messages from the message queue. """
+        while not self.message_queue.empty():
+            self.process_message(self.message_queue.get())
+
 

@@ -28,12 +28,17 @@ def join(self, channel, key=None):
         args.append(key)
     data = _build("JOIN", args)
     self.send(data)
-    self.channels[channel] = {}
+    self.channels[channel] = {'messages': [], 'users': []}
 
 
 def msg(self, target, message):
     """Send a message to a target."""
     data = _build("PRIVMSG", [target, message])
+    if target not in self.channels:
+        self.logger.warning("Target not in channels, joining: %s", target)
+        self.join(target)
+
+    self.channels[target]['messages'].append((None, message))
     self.send(data)
 
 
