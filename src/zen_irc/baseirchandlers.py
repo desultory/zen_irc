@@ -11,6 +11,7 @@ class BaseIRCHandlers:
     def handle_JOIN(self, msg):
         """ Handle JOIN messages. """
         self.logger.info("[%s] Joined channel: %s." % (msg.source, msg.params[0]))
+        self.channels[msg.params[0]]['joined'].set()
 
     def handle_NICK(self, msg):
         """ Handle NICK messages. """

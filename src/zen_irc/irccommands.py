@@ -2,6 +2,8 @@
 IRC protocol commands.
 """
 
+from zenlib.threading import threaded
+from threading import Event
 from irctokens import build as _build
 
 
@@ -18,21 +20,22 @@ class IRCCommands:
         self.nickname = nickname
 
     def join(self, channel, key=None):
-        """Join a channel."""
+        """Join a channel. Wait for the server to respond if wait is True."""""
         args = [channel, key] if key else [channel]
         self.send(_build("JOIN", args))
         if channel in self._channels:
             self.channels[channel] = self._channels.pop(channel)
         else:
             self.channels[channel] = {'messages': [], 'users': []}
+        self.channels[channel]['joined'] = Event()
 
+    @threaded
     def msg(self, target, message):
         """Send a message to a target."""
         data = _build("PRIVMSG", [target, message])
         if target not in self.channels:
-            self.logger.warning("Target not in channels, joining: %s", target)
             self.join(target)
-
+            self.channels[target]['joined'].wait()
         self.channels[target]['messages'].append(message)
         self.send(data)
 
@@ -40,6 +43,7 @@ class IRCCommands:
         """Part a channel."""
         args = [channel, message] if message else [channel]
         self.send(_build("PART", args))
+        self.channels[channel]['joined'].clear()
         self._channels[channel] = self.channels.pop(channel)
 
     def pong(self, server):
