@@ -1,23 +1,23 @@
-from zenlib.logging import loggify
+from zenlib.logging import ClassLogger
 from zenlib.threading import ZenThread
+
+from .baseirchandlers import BaseIRCHandlers
+from .extendedirchandlers import ExtendedIRCHandlers
+from .irccommands import IRCCommands
 
 from tomllib import load
 from socket import socket, AF_INET, SOCK_STREAM, timeout
 from ssl import wrap_socket
 from irctokens import StatefulDecoder, StatefulEncoder
-from importlib import import_module
-from functools import partial
 from threading import Event
 from queue import Queue
 
 
-@loggify
-class ZenIRC:
+class ZenIRC(ClassLogger, BaseIRCHandlers, ExtendedIRCHandlers, IRCCommands):
     def __init__(self, config="config.toml", *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.config_file = config
         self.load_config()
-        self.load_commands()
-        self.load_handlers()
 
         self.encoder = StatefulEncoder()
         self.decoder = StatefulDecoder()
@@ -35,37 +35,7 @@ class ZenIRC:
         with open(self.config_file, 'rb') as f:
             self.config = load(f)
 
-        if 'handlers' in self.config:
-            self.logger.info("[%s] Adding handlers from config file: %s" % (self.config_file, self.config['handlers']))
-            self.handlers.extend(self.config['handlers'])
-
         self.logger.debug('Loaded config: %s' % self.config)
-
-    def _import_callables(self, module):
-        """ Imports all callables from a module unless they start with an underscore."""
-        raw_module = import_module(module)
-        return [getattr(raw_module, command) for command in dir(raw_module) if callable(getattr(raw_module, command)) and not command.startswith('_')]
-
-    def load_handlers(self):
-        """ Loads the handlers module. """
-        for handler in self._import_callables('zen_irc.handlers'):
-            if getattr(self, handler.__name__, None):
-                self.logger.info("Handler already exists: %s" % handler.__name__)
-                continue
-            if not handler.__name__.startswith('handle_'):
-                raise ValueError('Handler does not start with "handle_": %s' % handler.__name__)
-            func = partial(handler, self)
-            setattr(self, handler.__name__, func)
-            self.logger.debug('Loaded handler: %s' % handler.__name__)
-
-    def load_commands(self):
-        """ Loads defined IRC commands from the commands module. """
-        for command in self._import_callables('zen_irc.commands'):
-            if getattr(self, command.__name__, None):
-                raise ValueError('Command already exists: %s' % command.__name__)
-            func = partial(command, self)
-            setattr(self, command.__name__, func)
-            self.logger.debug('Loaded command: %s' % command.__name__)
 
     def send(self, msg, quiet=False):
         """ Sends a message to the IRC server. """
