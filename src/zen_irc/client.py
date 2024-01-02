@@ -47,7 +47,6 @@ def main():
         gui = ZenIRCGUI(**kwargs)
         gui.show()
         app.exec()
-        print("asdfasdfasdfasd")
 
 
 if __name__ == "__main__":

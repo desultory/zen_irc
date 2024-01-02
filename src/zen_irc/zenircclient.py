@@ -16,7 +16,6 @@ class ZenIRCClient(ZenIRC):
 
     def loop_actions(self):
         """ Actions to perform in the loop. """
-        self.logger.warning("asdfasdfasd")
         # Check for messages in the queue
         if not self.message_queue.empty():
             print(self.message_queue.get())

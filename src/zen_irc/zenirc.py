@@ -10,8 +10,8 @@ from functools import partial
 from threading import Event
 
 
-@add_thread('mainloop', 'mainloop', 'ZenIRC mainloop')
 @loggify
+@add_thread('mainloop', 'mainloop', 'ZenIRC mainloop')
 class ZenIRC:
     def __init__(self, config="config.toml", *args, **kwargs):
         self.config_file = config
