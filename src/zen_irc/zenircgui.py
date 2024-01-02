@@ -19,13 +19,11 @@ class ZenIRCGUI(QMainWindow):
 
         display_box = QScrollArea()
         display_box.setWidgetResizable(True)
-        display_layout = QVBoxLayout()
-        display_layout.addStretch()
-        display_box.setLayout(display_layout)
         self.display_label = QLabel()
         self.display_label.setWordWrap(True)
         self.display_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        display_layout.addWidget(self.display_label)
+        self.display_label.setAlignment(Qt.AlignmentFlag.AlignBottom)
+        display_box.setWidget(self.display_label)
 
         self.input_box = QLineEdit()
         self.input_box.returnPressed.connect(self.process_input)
@@ -39,6 +37,7 @@ class ZenIRCGUI(QMainWindow):
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
 
+        self.show()
         self.client = ZenIRCClient(logger=self.logger, update_signal=self.update_signal)
 
     def update_gui(self):

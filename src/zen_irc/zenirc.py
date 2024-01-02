@@ -9,7 +9,7 @@ from tomllib import load
 from socket import socket, AF_INET, SOCK_STREAM, timeout
 from ssl import wrap_socket
 from irctokens import StatefulDecoder, StatefulEncoder
-from threading import Event
+from threading import Event, Lock
 from queue import Queue
 
 
@@ -27,6 +27,7 @@ class ZenIRC(ClassLogger, BaseIRCHandlers, ExtendedIRCHandlers, IRCCommands):
         self.message_queue = Queue()
 
         self.stop_cmd = ['QUIT']
+        self.send_lock = Lock()
         self.running = Event()
         self.initialized = Event()
 
@@ -41,11 +42,13 @@ class ZenIRC(ClassLogger, BaseIRCHandlers, ExtendedIRCHandlers, IRCCommands):
     def send(self, msg, quiet=False):
         """ Sends a message to the IRC server. """
         self.logger.debug('Encoding message: %s' % msg)
-        self.encoder.push(msg)
-        while pending_msg := self.encoder.pending():
-            log_level = 20 if quiet else 10
-            self.logger.log(log_level, 'Sending message: %s' % pending_msg.decode().strip())
-            self.encoder.pop(self.irc_socket.send(pending_msg))
+        with self.send_lock:
+            self.encoder.push(msg)
+            while pending_msg := self.encoder.pending():
+                log_level = 20 if quiet else 10
+                self.logger.log(log_level, 'Sending message: %s' % pending_msg.decode().strip())
+                self.irc_socket.send(pending_msg)
+                self.encoder.clear()
 
     def connect(self):
         """ Connects to the specified IRC server. """
@@ -119,7 +122,7 @@ class ZenIRC(ClassLogger, BaseIRCHandlers, ExtendedIRCHandlers, IRCCommands):
         lines = self.decoder.push(data)
         if lines is None:
             self.logger.warning("No lines returned from decoder, connection may have been closed.")
-            self.stop()
+            return self.stop()
 
         for line in lines:
             self.process_line(line)
