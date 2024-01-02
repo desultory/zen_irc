@@ -1,8 +1,8 @@
-
 from zenlib.logging import loggify
 from .zenircclient import ZenIRCClient
 
 from PyQt6.QtWidgets import QMainWindow, QLabel, QLineEdit, QVBoxLayout, QWidget, QComboBox
+from PyQt6.QtCore import pyqtSignal
 
 
 @loggify
@@ -11,6 +11,8 @@ class ZenIRCGUI(QMainWindow):
         super().__init__()
         self.setWindowTitle("ZenIRC")
 
+        self.update_signal = pyqtSignal()
+        self.update_signal.connect(self.update_gui)
         self.display_label = QLabel()
         self.input_box = QLineEdit()
         self.input_box.returnPressed.connect(self.process_input)
@@ -27,8 +29,10 @@ class ZenIRCGUI(QMainWindow):
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
 
-        self.client = ZenIRCClient(logger=self.logger, display_label=self.display_label)
+        self.client = ZenIRCClient(logger=self.logger, update_signal=self.update_signal)
+        self.update_gui()
 
+    def update_gui(self):
         self.update_channels()
 
     def update_channels(self, *args, **kwargs):
