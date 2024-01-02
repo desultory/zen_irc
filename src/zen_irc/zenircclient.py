@@ -11,7 +11,6 @@ class ZenIRCClient(ZenIRC):
         super().__init__(*args, **kwargs)
         self.active_channel = None
         self.update_signal = update_signal
-        self.run()
 
     def process_message(self, msg):
         channel = msg.params[0]
@@ -22,8 +21,6 @@ class ZenIRCClient(ZenIRC):
     def handle_JOIN(self, msg):
         """ Set the current_channel. """
         super().handle_JOIN(msg)
-        channel = msg.params[0]
-        self.active_channel = channel
         if self.update_signal:
             self.update_signal.emit()
 
@@ -36,3 +33,6 @@ class ZenIRCClient(ZenIRC):
         """ Override the join method to set the active_channel. """
         channel = channel or self.active_channel
         super().join(channel, *args, **kwargs)
+        if self.update_signal:
+            self.update_signal.emit()
+        self.active_channel = channel

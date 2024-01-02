@@ -95,8 +95,8 @@ class ZenIRC(ClassLogger, BaseIRCHandlers, ExtendedIRCHandlers, IRCCommands):
 
         self.initialized.set()
 
-    def run(self):
-        """ Runs the client. """
+    def start(self):
+        """ Starts the client. """
         if not self.initialized.is_set():
             self.connection_init()
         try:

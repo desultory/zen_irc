@@ -46,6 +46,7 @@ def main():
         app = QApplication([])
         gui = ZenIRCGUI(**kwargs)
         gui.show()
+        gui.client.start()
         app.exec()
 
 

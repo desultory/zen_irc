@@ -20,7 +20,10 @@ class IRCCommands:
         self.nickname = nickname
 
     def join(self, channel, key=None):
-        """Join a channel. Wait for the server to respond if wait is True."""""
+        """Join a channel. The JOIN handler sets the channel's joined event."""
+        if channel in self.channels and self.channels[channel]['joined'].is_set():
+            self.logger.warning("Channel already joined: %s", channel)
+            return
         args = [channel, key] if key else [channel]
         self.send(_build("JOIN", args))
         if channel in self._channels:

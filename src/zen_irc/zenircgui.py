@@ -40,7 +40,6 @@ class ZenIRCGUI(QMainWindow):
         self.setCentralWidget(central_widget)
 
         self.client = ZenIRCClient(logger=self.logger, update_signal=self.update_signal)
-        self.update_signal.emit()
 
     def update_gui(self):
         self.update_channels()
