@@ -53,13 +53,10 @@ def main():
     if args.cli:
         client = ZenIRCClient(**kwargs)
         client.start()
-    run_asyncio(main_async(kwargs))
 
-
-async def main_async(kwargs):
     app = QApplication([])
     gui = ZenIRCGUI(**kwargs)
-    await gui.client.start()
+    run_asyncio(gui.client.start())
     app.exec()
 
 
