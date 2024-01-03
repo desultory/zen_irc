@@ -6,7 +6,7 @@ from .irccommands import IRCCommands
 
 from tomllib import load
 from irctokens import StatefulDecoder, StatefulEncoder
-from threading import Event, Lock
+from threading import Lock, Event
 from queue import Queue
 import asyncio
 
@@ -23,9 +23,10 @@ class ZenIRC(ClassLogger, BaseIRCHandlers, ExtendedIRCHandlers, IRCCommands):
         self._channels = {}  # For removed channels
         self.message_queue = Queue()
 
+        self.motd_start = Event()
         self.stop_cmd = ['QUIT']
         self.send_lock = Lock()
-        self.initialized = Event()
+        self.reader_done = asyncio.Event()
 
     def load_config(self):
         """ Loads the config file from self.config_file. """
@@ -56,6 +57,8 @@ class ZenIRC(ClassLogger, BaseIRCHandlers, ExtendedIRCHandlers, IRCCommands):
         asyncio.create_task(self.reader_loop())
         self.connection_setup()
 
+        await self.reader_done.wait()
+
     def stop(self):
         """ End the event loop. """
         self.logger.info('Stopping event loop.')
@@ -79,13 +82,11 @@ class ZenIRC(ClassLogger, BaseIRCHandlers, ExtendedIRCHandlers, IRCCommands):
             self.join(channel)
             self.logger.info("[%s] Joined channel: %s" % (self.config['server'], channel))
 
-        self.initialized.set()
-
     async def process_line(self, line):
         """ Processes a line from the IRC server. """
         self.logger.debug('Processing line: %s' % line)
         if handler := getattr(self, f'handle_{line.command}', None):
-            await handler(line)
+            handler(line)
         else:
             self.logger.warning('[%s] Unhandled line: %s' % (line.command, line))
 
@@ -96,7 +97,6 @@ class ZenIRC(ClassLogger, BaseIRCHandlers, ExtendedIRCHandlers, IRCCommands):
     async def reader_loop(self):
         """ Loop for the irc_reader. """
         while True:
-            self.logger.warning("ASDFASDF")
             data = await self.irc_reader.read(1024)
             if not data:
                 self.logger.warning("No data received, connection may have been closed.")
@@ -110,6 +110,7 @@ class ZenIRC(ClassLogger, BaseIRCHandlers, ExtendedIRCHandlers, IRCCommands):
 
             for line in lines:
                 await self.process_line(line)
+        self.reader_done.set()
 
     def loop_actions(self):
         self.process_messages()
