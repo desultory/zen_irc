@@ -53,8 +53,7 @@ class ZenIRC(ClassLogger, BaseIRCHandlers, ExtendedIRCHandlers, IRCCommands):
             self.logger.info("Initializing connection.")
             await self.connection_init()
 
-        asyncio.ensure_future(self.reader_loop())
-
+        asyncio.create_task(self.reader_loop())
         self.connection_setup()
 
     def stop(self):
@@ -94,7 +93,6 @@ class ZenIRC(ClassLogger, BaseIRCHandlers, ExtendedIRCHandlers, IRCCommands):
             self.logger.warning('Received stop command: %s' % line.command)
             self.stop()
 
-    @log_call(log_level=20)
     async def reader_loop(self):
         """ Loop for the irc_reader. """
         while True:
