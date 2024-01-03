@@ -1,16 +1,14 @@
-from zenlib.logging import ClassLogger
-from zenlib.threading import ZenThread
+from zenlib.logging import ClassLogger, log_call
 
 from .baseirchandlers import BaseIRCHandlers
 from .extendedirchandlers import ExtendedIRCHandlers
 from .irccommands import IRCCommands
 
 from tomllib import load
-from socket import socket, AF_INET, SOCK_STREAM, timeout
-from ssl import wrap_socket
 from irctokens import StatefulDecoder, StatefulEncoder
 from threading import Event, Lock
 from queue import Queue
+import asyncio
 
 
 class ZenIRC(ClassLogger, BaseIRCHandlers, ExtendedIRCHandlers, IRCCommands):
@@ -21,14 +19,12 @@ class ZenIRC(ClassLogger, BaseIRCHandlers, ExtendedIRCHandlers, IRCCommands):
 
         self.encoder = StatefulEncoder()
         self.decoder = StatefulDecoder()
-        self.loop_thread = ZenThread(target=self.mainloop, looping=True, logger=self.logger)
         self.channels = {}
         self._channels = {}  # For removed channels
         self.message_queue = Queue()
 
         self.stop_cmd = ['QUIT']
         self.send_lock = Lock()
-        self.running = Event()
         self.initialized = Event()
 
     def load_config(self):
@@ -39,56 +35,44 @@ class ZenIRC(ClassLogger, BaseIRCHandlers, ExtendedIRCHandlers, IRCCommands):
 
         self.logger.debug('Loaded config: %s' % self.config)
 
+    @log_call(20)
     def send(self, msg, quiet=False):
-        """ Sends a message to the IRC server. """
+        """ Sends a message to the IRC server. Locks so it works with asyncio. """
         self.logger.debug('Encoding message: %s' % msg)
         with self.send_lock:
             self.encoder.push(msg)
             while pending_msg := self.encoder.pending():
                 log_level = 20 if quiet else 10
                 self.logger.log(log_level, 'Sending message: %s' % pending_msg.decode().strip())
-                self.irc_socket.send(pending_msg)
+                self.irc_writer.write(pending_msg)
                 self.encoder.clear()
 
-    def connect(self):
+    async def start(self):
+        """ Start the IRC connection. """
+        if not hasattr(self, 'irc_reader') or not hasattr(self, 'irc_writer'):
+            self.logger.info("Initializing connection.")
+            await self.connection_init()
+
+        asyncio.ensure_future(self.reader_loop())
+
+        self.connection_setup()
+
+    def stop(self):
+        """ End the event loop. """
+        self.logger.info('Stopping event loop.')
+        asyncio.get_event_loop().stop()
+
+    async def connection_init(self):
         """ Connects to the specified IRC server. """
-        self._socket = socket(AF_INET, SOCK_STREAM)
-        self.logger.debug('Created socket: %s' % self._socket)
-        self.irc_socket = wrap_socket(self._socket)
-        self.logger.debug('Wrapped socket: %s' % self.irc_socket)
-        self.irc_socket.settimeout(1)
+        self.irc_reader, self.irc_writer = await asyncio.open_connection(self.config['server'], self.config['port'], ssl=True)
+        self.logger.info('Connected to IRC server: %s:%d' % (self.config['server'], self.config['port']))
+        self.logger.debug("Reader: %s, Writer: %s" % (self.irc_reader, self.irc_writer))
 
-        self.irc_socket.connect((self.config['server'], self.config['port']))
-        self.logger.info('Connected to %s:%s' % (self.config['server'], self.config['port']))
-
-    def process_line(self, line):
-        """ Processes a line from the IRC server. """
-        self.logger.debug('Processing line: %s' % line)
-        if handler := getattr(self, f'handle_{line.command}', None):
-            handler(line)
-        else:
-            self.logger.warning('[%s] Unhandled line: %s' % (line.command, line))
-
-        if line.command in self.stop_cmd:
-            self.logger.warning('Received stop command: %s' % line.command)
-            self.stop()
-
-    def connection_init(self):
+    def connection_setup(self):
         """ Initializes the connection to the IRC server. """
-        self.connect()
         self.user(self.config['user'])
         self.nick(self.config['user'])
         self.server_info = {'supported_features': []}
-        self.motd_start = Event()
-
-        # Add a hook to handle 376 (end of MOTD) and then remove it
-        # This is so we can wait for the end of the MOTD before joining channels
-        pre_stop_cmd = self.stop_cmd.copy()
-        self.stop_cmd = ['376']
-        # Run the mainloop manually, since we're not actually running the client yet
-        self.loop_thread.start()
-        self.loop_thread.join()
-        self.stop_cmd = pre_stop_cmd
 
         self.logger.info("[%s] Supported features: %s" % (self.config['server'], self.server_info['supported_features']))
 
@@ -98,36 +82,36 @@ class ZenIRC(ClassLogger, BaseIRCHandlers, ExtendedIRCHandlers, IRCCommands):
 
         self.initialized.set()
 
-    def start(self):
-        """ Starts the client. """
-        if not self.initialized.is_set():
-            self.connection_init()
-        try:
-            self.loop_thread.start()
-        except KeyboardInterrupt:
-            self.logger.warning("Received keyboard interrupt, sending QUIT")
-            self.quit(message="Keyboard interrupt")
-            self.run()
+    async def process_line(self, line):
+        """ Processes a line from the IRC server. """
+        self.logger.debug('Processing line: %s' % line)
+        if handler := getattr(self, f'handle_{line.command}', None):
+            await handler(line)
+        else:
+            self.logger.warning('[%s] Unhandled line: %s' % (line.command, line))
 
-    def stop(self):
-        self.loop_thread.loop.clear()
+        if line.command in self.stop_cmd:
+            self.logger.warning('Received stop command: %s' % line.command)
+            self.stop()
 
-    def mainloop(self):
-        """ Main loop for the client. """
-        try:
-            data = self.irc_socket.recv(1024)
-        except timeout:
-            return
-        self.logger.log(5, 'Received data: %s' % data)
-        lines = self.decoder.push(data)
-        if lines is None:
-            self.logger.warning("No lines returned from decoder, connection may have been closed.")
-            return self.stop()
+    @log_call(log_level=20)
+    async def reader_loop(self):
+        """ Loop for the irc_reader. """
+        while True:
+            self.logger.warning("ASDFASDF")
+            data = await self.irc_reader.read(1024)
+            if not data:
+                self.logger.warning("No data received, connection may have been closed.")
+                return self.stop()
 
-        for line in lines:
-            self.process_line(line)
+            self.logger.log(5, 'Received data: %s' % data)
+            lines = self.decoder.push(data)
+            if lines is None:
+                self.logger.warning("No lines returned from decoder, connection may have been closed.")
+                return self.stop()
 
-        self.loop_actions()
+            for line in lines:
+                await self.process_line(line)
 
     def loop_actions(self):
         self.process_messages()

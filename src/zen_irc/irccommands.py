@@ -2,7 +2,6 @@
 IRC protocol commands.
 """
 
-from zenlib.threading import threaded
 from threading import Event
 from irctokens import build as _build
 
@@ -32,7 +31,6 @@ class IRCCommands:
             self.channels[channel] = {'messages': [], 'users': []}
         self.channels[channel]['joined'] = Event()
 
-    @threaded
     def msg(self, target, message):
         """Send a message to a target."""
         data = _build("PRIVMSG", [target, message])
